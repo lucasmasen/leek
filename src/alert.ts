@@ -2,7 +2,9 @@
 // Owner alerts: send to every configured channel and count how many actually delivered.
 //
 // No Deno.* calls here, so tests/node/alert.test.ts can run it under plain Node
-// (`node --test tests/node/*.test.ts`). index.ts passes in the real settings and fetch.
+// (`node --test tests/*.test.ts`). index.ts passes in the real settings and fetch.
+
+import { apiError, errText } from "./safety.ts";
 
 export type Channels = { discord_webhook_url?: string; ntfy_topic?: string; ntfy_token?: string };
 export type Priority = "urgent" | "high" | "default";
@@ -15,6 +17,9 @@ export const ALERT_FAILED = "ALERT FAILED: nobody at the shop was notified. For 
 const SEND_TIMEOUT_MS = 8000; // two channels in parallel still finish well inside Vapi's 20 s tool timeout
 
 const ascii = (s: string) => s.replace(/[^\x20-\x7E]/g, "").slice(0, 120); // HTTP header values must be ASCII
+// Caller-dictated text can't become a masked link ("[your invoice](https://...)") in the owner's Discord: a zero-width
+// space between "]" and "(" breaks the link and looks the same (security review L1).
+export const noMaskedLinks = (s: string) => s.replaceAll("](", "]\u200b(");
 
 // Returns how many channels delivered (a 2xx). Never throws: a send that errors, times out or
 // gets a non-2xx counts as not delivered, and so does a failed settings read.
@@ -30,18 +35,18 @@ export async function push(
   try {
     conf = await channels();
   } catch (e) {
-    console.error("alert: could not read channels", e);
+    console.error("alert: could not read channels", errText(e));
     return 0;
   }
   const sends: Promise<boolean>[] = [];
   const send = (name: string, url: string, init: RequestInit) =>
     fetchFn(url, { ...init, signal: AbortSignal.timeout(SEND_TIMEOUT_MS) })
       .then(async (r) => {
-        if (!r.ok) console.error(`${name} failed`, r.status, await r.text().catch(() => ""));
+        if (!r.ok) console.error(`${name} failed`, apiError(r.status, await r.text().catch(() => "")));
         return r.ok;
       })
       .catch((e) => {
-        console.error(`${name} failed`, e);
+        console.error(`${name} failed`, errText(e)); // Deno's fetch errors print the URL, and a webhook URL is a secret
         return false;
       });
   if (conf.discord_webhook_url) {
@@ -49,13 +54,13 @@ export async function push(
     sends.push(send("discord", conf.discord_webhook_url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: `**${icon}${title}**\n${body}`.slice(0, 2000), allowed_mentions: { parse: [] } }),
+      body: JSON.stringify({ content: noMaskedLinks(`**${icon}${title}**\n${body}`).slice(0, 2000), allowed_mentions: { parse: [] } }),
     }));
   }
   if (conf.ntfy_topic) {
     const headers: Record<string, string> = { Title: ascii(title), Priority: priority, Tags: tags };
     if (conf.ntfy_token) headers.Authorization = `Bearer ${conf.ntfy_token}`;
-    sends.push(send("ntfy", `https://ntfy.sh/${conf.ntfy_topic}`, { method: "POST", body, headers }));
+    sends.push(send("ntfy", `https://ntfy.sh/${conf.ntfy_topic}`, { method: "POST", body: body.slice(0, 3500), headers }));
   }
   if (!sends.length) console.error("no alert channel configured in demo_line_settings");
   return (await Promise.all(sends)).filter(Boolean).length;
@@ -63,9 +68,16 @@ export async function push(
 
 // What the assistant hears back. Vapi puts `error` into the conversation and the model answers
 // it; the prompt tells it an error means nobody was told, so it must not promise a callback.
-export function toolReply(toolCallId: unknown, delivered: number, sent = ALERT_SENT) {
-  return delivered > 0 ? { toolCallId, result: sent } : { toolCallId, error: ALERT_FAILED };
+export function toolReply(toolCallId: unknown, delivered: number, sent = ALERT_SENT, failed = ALERT_FAILED) {
+  return delivered > 0 ? { toolCallId, result: sent } : { toolCallId, error: failed };
 }
+
+// A failed routine message or person request used to come back as "ALERT FAILED", with the emergency script attached
+// (prompt audit #13, 10/25). Each now says what failed and what to tell the caller.
+export const MESSAGE_FAILED = "MESSAGE NOT SENT: nobody at the shop got it. Don't say the office will call. Say you " +
+  "couldn't send it just now and they can call the shop back.";
+export const PERSON_REQUEST_FAILED = "REQUEST NOT SENT: nobody at the shop got it. Don't say anyone will call. Say " +
+  "you couldn't reach anyone just now and they can call the shop back.";
 
 const WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
 const spell = (d: string) => [...d].map((c) => WORDS[Number(c)]).join(" ");
@@ -129,7 +141,8 @@ export function alertSent(callbackArg: string | null, callerId: string | null, k
   }
   if (callerId) {
     return `${ALERT_SENT} It has the number they're calling from. After the water steps, ask warmly and lightly, as a ` +
-      `quick check: "And is this number a good one to reach you at?" If they say any phone number, even inside a yes ` +
+      `quick check: "And is this number a good one to reach you at?" (If the caller is a child, skip that: ask for a grown-up's ` +
+      `number instead, as your instructions say.) If they say any phone number, even inside a yes ` +
       `("yes, 510 555 0123 is good"), it may not be this one: send it with the alert tool that same turn ` +
       "(callback_number, \"update\" in the problem) before you say anything about it.";
   }

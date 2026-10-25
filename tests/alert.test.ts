@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { ALERT_FAILED, ALERT_SENT, alertNumber, alertOutcome, push, spokenNumber, toolReply } from "../src/alert.ts";
+import { ALERT_FAILED, ALERT_SENT, alertNumber, alertOutcome, MESSAGE_FAILED, PERSON_REQUEST_FAILED, push, spokenNumber, toolReply } from "../src/alert.ts";
 
 const BOTH = async () => ({ discord_webhook_url: "https://discord.example/hook", ntfy_topic: "t" });
 const DISCORD_ONLY = async () => ({ discord_webhook_url: "https://discord.example/hook" });
@@ -121,4 +121,11 @@ test("the caller's last spoken number backs up an alert that carries none", () =
   assert.equal(spokenNumber([{ role: "user", message: "Actually use 5105550123 instead" }]), "5105550123");
   assert.equal(spokenNumber([{ role: "user", message: "It's 1450 Irving, near 16th" }]), null); // an address isn't a number
   assert.equal(spokenNumber(undefined), null);
+});
+
+test("a failed message or person request says what failed, not 'ALERT FAILED'", () => {
+  assert.deepEqual(toolReply("t", 0, "sent", MESSAGE_FAILED), { toolCallId: "t", error: MESSAGE_FAILED });
+  assert.deepEqual(toolReply("t", 0, "sent", PERSON_REQUEST_FAILED), { toolCallId: "t", error: PERSON_REQUEST_FAILED });
+  assert.deepEqual(toolReply("t", 0), { toolCallId: "t", error: ALERT_FAILED }); // alerts keep the alert failure
+  assert.match(MESSAGE_FAILED, /Don't say the office will call/);
 });

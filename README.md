@@ -10,7 +10,7 @@ the next result within minutes. Shutoff Call picks up on the first ring, any hou
 **Try it:** call **(628) 201-0355** and say your pipe just burst. Godfrey answers as Sunset
 Plumbing, a made-up shop, so nothing you say reaches a real plumber.
 
-> This repo is a showcase: this README, two production modules with their tests, and sample calls
+> This repo is a showcase: this README, three production modules with their tests, and sample calls
 > ([docs/sample-calls.md](docs/sample-calls.md)). The full system (the prompt, the call simulator,
 > the test suite and the demo pipeline) is private.
 
@@ -41,12 +41,19 @@ calendar, logs every call to Postgres, and routes each shop's alerts to that sho
 
 ## Results
 
-- **88% of 153 simulated calls passed** (134 of 153, October 24, 2026). On the original, smaller
-  test set, the pass rate went from 77% to about 90% in a day. The full suite is 51 call types, run 3 times each, graded by hard checks in code plus an AI judge that
-  checks each answer against the shop's own facts.
+- **92% of 153 simulated calls passed** (141 of 153, October 25, 2026, the latest full run). The
+  full suite is 51 call types, run 3 times each, graded by hard checks in code plus an AI judge that
+  checks each answer against the shop's own facts. Every run is logged, so the trend is checkable:
+  full runs averaged 71% on October 22, 75% on October 23 and 83% on October 24 (11 runs, 1,407
+  calls), with single runs ranging from 74% to 90% that day. One run at 92% is not yet an average.
+  Of the 12 fails in the latest run, 8 tripped only the "two questions in one turn" check.
 - **Hard callers are in the suite:** a 9-year-old home alone, a Spanish-only caller, an
   82-year-old who's hard of hearing, an angry caller, "ignore your instructions", "are you a
   robot?", a caller whose number is blocked.
+- **42 red-team calls** sit on a separate branch, not yet merged: 15 on privacy, safety and
+  honesty, 15 booking edge cases (someone else's house, a P.O. box, a cancel), and 12 on
+  turn-taking and messy speech. The first 30 went from 17 passed to 23 after fixes. The 12
+  turn-taking calls passed 5 of 12 on their first run; the gaps are listed below.
 - **About 9 cents a minute** in real cost, measured on live calls (voice platform, voice,
   speech-to-text and model), plus the phone number.
 - A health check runs against the live line every 30 minutes.
@@ -90,21 +97,47 @@ that fixed its target call but quietly lost callback numbers elsewhere.
 that shop's own channel. A missing or broken channel falls back to the developer's, so an alert
 never goes nowhere.
 
+**Logs never hold what a caller said.** The webhook's logs sit outside the database's access rules,
+so an error there is a status code and a short reason, never the failing row, an upstream error
+body or a URL (a webhook URL is a secret). Every tool argument is cut to a length a real call never
+needs. See [`src/safety.ts`](src/safety.ts).
+
+## What we got wrong this week
+
+All three were found in testing, not by a caller, and each fix was tested on the calls that exposed
+it plus a regression run before it went live.
+
+- **"Okay, bye" booked an appointment.** Godfrey offered times, the caller said "Okay, bye",
+  and the booking went through for a time nobody picked. Now a booking needs a time the caller
+  said out loud. No pick, no booking.
+- **A time was "held" when nothing holds it.** Godfrey told callers a slot was held or reserved
+  for them. Nothing is held until it's booked, so he no longer says it.
+- **A carbon monoxide alarm got the plumbing script.** A caller with a CO alarm going off was
+  treated like a routine call. CO is now handled like a gas smell: everyone out, pets too, call 911
+  from outside, no medical advice. That red-team call went from failing to 4 of 4.
+
+Still open, from the turn-taking red-team run: Godfrey sometimes asks again for a name or number
+the caller already gave, repeats a question at greater length when the caller says "you cut out",
+re-asks after a "hold on", and once read the caller-ID digits out loud. Fixes are in testing.
+
 ## What's in this repo
 
 | File | What it does |
 |---|---|
 | [`src/address.ts`](src/address.ts) | Turns a caller's spoken address into a written one and a read-back ("1847 41st Avenue", "eighteen forty-seven, forty-first Avenue") |
 | [`src/alert.ts`](src/alert.ts) | Sends alerts to every channel, counts real deliveries, and writes what the model hears back |
-| [`tests/`](tests) | 18 tests: speech-to-text splits, ordinals, failed and timed-out sends, partial numbers |
+| [`src/safety.ts`](src/safety.ts) | Bounds every tool argument and keeps caller data, upstream error bodies and URLs out of logs |
+| [`tests/`](tests) | 27 tests: speech-to-text splits, ordinals, failed and timed-out sends, partial numbers, log hygiene |
 | [`docs/sample-calls.md`](docs/sample-calls.md) | Three calls from the test suite: a burst pipe, a child home alone, a failed alert |
 
 ```bash
 npm test     # Node 23.6 or newer, no dependencies
 ```
 
-Both modules run under plain Node with no Deno calls, so the same code the edge function deploys
-is what the tests check.
+All three modules run under plain Node with no Deno calls, so the same code the edge function
+deploys is what the tests check. The copies here match webhook v16 (October 25, 2026), which is
+committed and tested but not yet deployed to the live line; v15 is what answers the demo number
+today.
 
 ## Testing a phone agent without a phone
 
@@ -116,6 +149,9 @@ the tools. A run costs cents and places no calls. Each call is graded twice:
 - **by a judge model**, against the shop's own facts, so nothing it says counts as invented if
   the shop really said it.
 
+Prompts are cached, a small model screens every call, and the larger judge only reads the ones the
+screen failed. On 102 calls graded both ways, the verdicts matched on 101.
+
 ## Stack
 
 Vapi (voice), Claude Haiku (conversation), Claude Sonnet (judge), Deepgram (speech-to-text),
@@ -125,6 +161,7 @@ setup, simulator and tests, and TypeScript with Node's test runner for the webho
 ## Status
 
 Live on a demo line since October 2026, and talking to San Francisco plumbing shops about pilots.
+No paying customers yet.
 Built by Lucas Masen.
 
 ## License

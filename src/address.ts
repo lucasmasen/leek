@@ -166,6 +166,6 @@ export function addressReply(a: Address): string {
     : `Not sure about this one. Read it back once, exactly like this, and ask them to correct anything: "I have ${a.spoken}. Is that right?"`;
   // Checking isn't sending: on prospect demos the model said "I've passed your address along" with no alert (10/24).
   return `${head} If they say yes, the address is "${a.address}": use exactly that wherever you send or book the address. ` +
-    "On an emergency, once they say yes, send it to the plumber with the alert tool (an update with the address) " +
-    "before you say it's passed along. If they correct any part, call check_address again with their correction.";
+    "On an emergency, once they say yes, send it to the plumber with the alert tool: an update with the address, plus " +
+    "callback_number if they've said a phone number on this call. Do that before you say it's passed along. If they correct any part, call check_address again with their correction.";
 }
