@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Lucas Masen. All rights reserved. Not open source: see LICENSE.
 // Owner alerts: send to every configured channel and count how many actually delivered.
 //
 // No Deno.* calls here, so tests/node/alert.test.ts can run it under plain Node

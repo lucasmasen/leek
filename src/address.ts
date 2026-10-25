@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Lucas Masen. All rights reserved. Not open source: see LICENSE.
 // Street addresses, worked out by code instead of by the model.
 //
 // Speech-to-text splits San Francisco's numbered avenues ("41st" arrives as "40 first") and house numbers

@@ -3,6 +3,11 @@
   "private": true,
   "description": "Selected modules from Shutoff Call, an AI phone receptionist for plumbers.",
   "type": "module",
-  "engines": { "node": ">=23.6" },
-  "scripts": { "test": "node --test tests/*.test.ts" }
+  "engines": {
+    "node": ">=23.6"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.ts"
+  },
+  "license": "UNLICENSED"
 }

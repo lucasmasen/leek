@@ -126,3 +126,8 @@ setup, simulator and tests, and TypeScript with Node's test runner for the webho
 
 Live on a demo line since October 2026, and talking to San Francisco plumbing shops about pilots.
 Built by Lucas Masen.
+
+## License
+
+Copyright (c) 2026 Lucas Masen. All rights reserved. This code is shared for viewing only and is not
+open source: see [LICENSE](LICENSE).
