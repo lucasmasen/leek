@@ -1,10 +1,10 @@
-# Shutoff Call
+# Leek
 
 An AI phone receptionist for plumbers. It answers when the shop can't, alerts the shop mid-call on
 a burst pipe, walks the homeowner to the shutoff valve, and books routine jobs or takes a message.
 
 A plumber who misses a call while under a sink usually loses that job, because the caller dials
-the next result within minutes. Shutoff Call picks up on the first ring, any hour.
+the next result within minutes. Leek picks up on the first ring, any hour.
 
 **Try it:** the demo line is live. Call **(628) 201-0355**, any hour, and say your pipe just burst.
 Godfrey answers as Sunset Plumbing, a made-up shop. The alert goes to my phone, never to a real
