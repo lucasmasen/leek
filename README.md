@@ -86,15 +86,15 @@ regression shows up on the next full run. Round 6 passed 8 of 12 on its first ru
 two went away with the reply-cap fix below, one was only the strict two-questions check, and one
 (a tester should be offered a message) went from 1 of 3 to 3 of 3 that night.
 
-**A tradesman tester broke it on a Sunday night.** They called to break it, and did: a tradesman
-tester got it to accept a joke nickname, and to read the callback number back wrong twice (the
-request that reached the shop still had the right number). That night both calls became test cases
-and the fix was written: a prompt rule (read back the last number said, no joke nicknames) and a
-webhook change that spells out the number it actually sent, so the read-back comes from code, not
+**A tester broke it on a Sunday night.** They called to break it, and did: they got it to read
+the callback number back wrong twice (the request that reached the shop still had the right
+number). That night both calls became test cases and the fix was written: a prompt rule (read back
+the last number said) and a webhook change that spells out the number it actually sent, so the read-back comes from code, not
 the model ([`sentWithNumber` in `src/alert.ts`](src/alert.ts)). In the simulator that call went from
 1 of 6 runs passing to 6 of 6. The prompt half is live, and the webhook half (v16) deployed
-October 29. A replay of the call on October 28, before that deploy, still got the read-back wrong. So the fix is deployed and simulated, with live test-call verdicts still
-pending, not yet proven on a real call.
+October 29. A replay of the call on October 28, before that deploy, still got the read-back wrong.
+So the fix is deployed and simulated, with live test-call verdicts still pending, not yet proven
+on a real call.
 
 **An overnight benchmark found a bug three prompt rewrites couldn't.** Bookings kept losing the job
 description: in one night's runs, 58 of 188 booking calls (some of them retries) left it out. We
@@ -102,8 +102,8 @@ tried three rewordings of the prompt and the booking tool's description; none he
 reverted. The overnight run traced it to a 250-token cap on each reply. "Let me book that for you"
 plus a booking for a caller with several jobs runs about 300 tokens, so the API returned the tool
 call cut short, missing its last field. Raising the cap to 500, plus a webhook guard that refuses a
-booking with no description, put the description in 22 of 22 simulated bookings. Both are committed
-and tested, not yet live.
+booking with no description, put the description in 22 of 22 simulated bookings. Both have been
+live since October 29, 11:44am PT; live test-call verdicts are still pending.
 
 ## Decisions worth explaining
 
@@ -158,13 +158,15 @@ regression run, before it goes live.
 
 **Most recent**
 - **A callback number read back wrong.** The tester's call above: the model was reading the digits
-  itself. The code fix is written and simulated; until it deploys, this is the failure we watch for.
+  itself. The code fix has been live since October 29 (webhook v16) and passed in the simulator;
+live test-call verdicts are pending, so this is still the failure we watch for.
 - **Three prompt rewrites for a bug that wasn't in the prompt.** Bookings lost the job description
   because the reply cap cut the tool call short (above). We should have checked the raw API output
   before rewording anything.
 - **A fix for talk-overs made every reply slower.** On October 23 we made Godfrey wait 0.6 s instead
   of 0.2 s after a caller's full stop, so he'd stop cutting people off. That added about 0.4 s to
-  every ordinary turn (1.26 s to 1.65 s median). A narrower rule is written, not live.
+  every ordinary turn (1.26 s to 1.65 s median). A narrower rule (three endpointing rules instead of
+one blanket wait) has been live since October 29; live test-call verdicts are pending.
 
 **Before that**
 - **"Okay, bye" booked an appointment.** Godfrey offered times, the caller said "Okay, bye", and the
