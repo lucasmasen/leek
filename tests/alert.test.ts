@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { ALERT_FAILED, ALERT_SENT, alertNumber, alertOutcome, MESSAGE_FAILED, PERSON_REQUEST_FAILED, push, spokenNumber, toolReply } from "../src/alert.ts";
+import { ALERT_FAILED, ALERT_SENT, alertNumber, alertOutcome, MESSAGE_FAILED, MESSAGE_SENT, PERSON_REQUEST_FAILED, PERSON_REQUEST_SENT, push, sentWithNumber, spokenNumber, toolReply } from "../src/alert.ts";
 
 const BOTH = async () => ({ discord_webhook_url: "https://discord.example/hook", ntfy_topic: "t" });
 const DISCORD_ONLY = async () => ({ discord_webhook_url: "https://discord.example/hook" });
@@ -77,7 +77,6 @@ test("row outcome says whether it got through", () => {
 });
 
 test("a person request uses its own success text, and the same error when nobody was told", async () => {
-  const { PERSON_REQUEST_SENT } = await import("../src/alert.ts");
   assert.deepEqual(toolReply("t1", 1, PERSON_REQUEST_SENT), { toolCallId: "t1", result: PERSON_REQUEST_SENT });
   assert.deepEqual(toolReply("t1", 0, PERSON_REQUEST_SENT), { toolCallId: "t1", error: ALERT_FAILED });
 });
@@ -128,4 +127,15 @@ test("a failed message or person request says what failed, not 'ALERT FAILED'", 
   assert.deepEqual(toolReply("t", 0, "sent", PERSON_REQUEST_FAILED), { toolCallId: "t", error: PERSON_REQUEST_FAILED });
   assert.deepEqual(toolReply("t", 0), { toolCallId: "t", error: ALERT_FAILED }); // alerts keep the alert failure
   assert.match(MESSAGE_FAILED, /Don't say the office will call/);
+});
+
+test("callback request and message replies spell the number that was sent (red-team 10/25)", () => {
+  assert.equal(sentWithNumber(PERSON_REQUEST_SENT, "1 415 555 0172"),
+    `${PERSON_REQUEST_SENT} Its callback number is four one five, five five five, zero one seven two. Whenever you ` +
+    `read the number back, now or later, say exactly "four one five, five five five, zero one seven two". If they ` +
+    "correct it, use this tool again with the corrected number.");
+  assert.match(sentWithNumber(MESSAGE_SENT, "(415) 555-0172"), /four one five, five five five, zero one seven two/);
+  assert.match(sentWithNumber(MESSAGE_SENT, "415 55"), /only part of one\. Say "I got four one five five five\. What comes after that\?"/);
+  assert.equal(sentWithNumber(PERSON_REQUEST_SENT, null), PERSON_REQUEST_SENT);
+  assert.equal(sentWithNumber(MESSAGE_SENT, "none"), MESSAGE_SENT);
 });

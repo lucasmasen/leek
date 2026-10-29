@@ -151,5 +151,21 @@ export function alertSent(callbackArg: string | null, callerId: string | null, k
 }
 
 export const PERSON_REQUEST_SENT = "Request sent. The first person at the shop who's free will call them back.";
+export const MESSAGE_SENT = "Message sent to the office. They'll call back.";
+
+/** A sent callback request or message, plus the number it carried in words. A tradesman's red-team call (10/25)
+ * got its number read back wrong, twice, once after the right number had gone out: the model spoke the digits
+ * itself. Now the webhook spells the number it sent, as alerts do, so any read-back is what the shop got. */
+export function sentWithNumber(sent: string, callbackArg: string | null): string {
+  const digits = (callbackArg ?? "").replace(/\D/g, "");
+  if (!digits) return sent;
+  const n = digits.length === 11 && digits.startsWith("1") ? 10 : digits.length;
+  if (n < 10) {
+    return `${sent} The callback number so far is only part of one. Say "I got ${readBack(digits)}. What comes after ` +
+      "that?\" When you have the rest, use this tool again with the full number.";
+  }
+  return `${sent} Its callback number is ${readBack(digits)}. Whenever you read the number back, now or later, say ` +
+    `exactly "${readBack(digits)}". If they correct it, use this tool again with the corrected number.`;
+}
 
 export const alertOutcome = (delivered: number) => (delivered > 0 ? "alert delivered" : "ALERT FAILED");

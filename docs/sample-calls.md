@@ -1,8 +1,9 @@
 # Sample calls
 
 Three calls from the simulated test suite (October 24, 2026), all at Sunset Plumbing, a made-up
-shop. The callers are played by an AI, and every phone number is a fake 555 number. Tool calls
-are summarized in brackets. Some turns are shortened, marked [...].
+shop. The callers are played by an AI, every phone number is a fake 555 number, and the one street
+address is the demo's made-up 1847 41st Avenue. Tool calls are summarized in brackets. Some turns
+are shortened, marked [...].
 
 ## A burst pipe
 
@@ -30,11 +31,11 @@ are summarized in brackets. Some turns are shortened, marked [...].
 >
 > **Godfrey:** Got it. Four one five, five five five, zero one nine nine. Did I get that right?
 >
-> **Caller:** 1450 Irving Street, near 16th.
+> **Caller:** 1847 41st Avenue, near Lawton.
 >
-> *[check_address: "1450 Irving Street, near 16th" → read back "fourteen fifty, Irving Street, near 16th, right?"]*
+> *[check_address: "1847 41st Avenue, near Lawton" → read back "eighteen forty-seven, forty-first Avenue, near Lawton, right?"]*
 >
-> **Godfrey:** Okay, fourteen fifty, Irving Street, near 16th, right?
+> **Godfrey:** Okay, eighteen forty-seven, forty-first Avenue, near Lawton, right?
 >
 > **Caller:** Yes. Please hurry, the water's still coming down the stairs.
 >

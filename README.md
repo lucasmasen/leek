@@ -1,14 +1,14 @@
 # Shutoff Call
 
-An AI phone receptionist for plumbers. It answers when the shop can't, walks a homeowner through
-shutting off a burst pipe, alerts the on-call plumber mid-call, and books the job or takes a
-message.
+An AI phone receptionist for plumbers. It answers when the shop can't, alerts the shop mid-call on
+a burst pipe, walks the homeowner to the shutoff valve, and books routine jobs or takes a message.
 
 A plumber who misses a call while under a sink usually loses that job, because the caller dials
 the next result within minutes. Shutoff Call picks up on the first ring, any hour.
 
-**Try it:** call **(628) 201-0355** and say your pipe just burst. Godfrey answers as Sunset
-Plumbing, a made-up shop, so nothing you say reaches a real plumber.
+**Try it:** the demo line is live. Call **(628) 201-0355**, any hour, and say your pipe just burst.
+Godfrey answers as Sunset Plumbing, a made-up shop. The alert goes to my phone, never to a real
+plumber.
 
 > This repo is a showcase: this README, three production modules with their tests, and sample calls
 > ([docs/sample-calls.md](docs/sample-calls.md)). The full system (the prompt, the call simulator,
@@ -41,22 +41,69 @@ calendar, logs every call to Postgres, and routes each shop's alerts to that sho
 
 ## Results
 
-- **92% of 153 simulated calls passed** (141 of 153, October 25, 2026, the latest full run). The
-  full suite is 51 call types, run 3 times each, graded by hard checks in code plus an AI judge that
-  checks each answer against the shop's own facts. Every run is logged, so the trend is checkable:
-  full runs averaged 71% on October 22, 75% on October 23 and 83% on October 24 (11 runs, 1,407
-  calls), with single runs ranging from 74% to 90% that day. One run at 92% is not yet an average.
-  Of the 12 fails in the latest run, 8 tripped only the "two questions in one turn" check.
+**On real calls.** The line has taken 10 real calls since October 19, all tests by me and people I
+asked, not customers. Read from the voice platform's own call records:
+- **The emergency alert went out a median 21 seconds after the caller started talking** (on the 7
+  calls that sent one).
+- **Replies start a median 1.4 seconds after the caller stops talking**, over 100 timed turns (p90
+  2.5 s, worst 4.1 s). The model and the voice take about 0.4 s each; the rest is our own rules for
+  deciding the caller is done, and tool calls.
+- **About $0.09 a minute** all in (voice platform, voice, speech-to-text and model), plus the phone
+  number.
+- 0 tool errors and 0 platform errors.
+
+Ten calls is a small sample, so these are medians, not percentages.
+
+**In the simulator: 83-92% on full runs**, depending on how many adversarial cases the run
+includes. Every score in this section is simulated.
+- **92%** (141 of 153, October 25): 51 call types, 3 runs each.
+- **83%** (96 of 115, October 28): 66 call types, including 15 adversarial ones from red-team rounds
+  4 and 5, written to find failures. Those passed 21 of 31; the 51 shared call types passed 89%.
+- Every run is logged, so the trend is checkable: full runs averaged 71% on October 22, 75% on
+  October 23 and 83% on October 24 (11 runs, 1,407 calls). In the 92% run, 8 of the 12 fails
+  were only the strict "two questions in one turn" check.
 - **Hard callers are in the suite:** a 9-year-old home alone, a Spanish-only caller, an
   82-year-old who's hard of hearing, an angry caller, "ignore your instructions", "are you a
   robot?", a caller whose number is blocked.
-- **42 red-team calls** sit on a separate branch, not yet merged: 15 on privacy, safety and
-  honesty, 15 booking edge cases (someone else's house, a P.O. box, a cancel), and 12 on
-  turn-taking and messy speech. The first 30 went from 17 passed to 23 after fixes. The 12
-  turn-taking calls passed 5 of 12 on their first run; the gaps are listed below.
-- **About 9 cents a minute** in real cost, measured on live calls (voice platform, voice,
-  speech-to-text and model), plus the phone number.
-- A health check runs against the live line every 30 minutes.
+
+A health check tests the live line's setup and webhook every 30 minutes, but for now it runs from
+my laptop, so it misses hours overnight. Moving it to an always-on scheduler is on the list.
+
+## How it was tested: trying to break it
+
+**Six red-team rounds, 81 adversarial calls.** Each round writes callers designed to make Godfrey
+fail, runs them against the current prompt, and fixes what breaks:
+1. privacy, safety and honesty (15 calls);
+2. booking edge cases: someone else's house, a P.O. box, a cancel (15);
+3. turn-taking and messy speech: "hold on", "you cut out" (12);
+4. real life is messy: a noisy job site, a phone handed to a roommate, a dying battery (15);
+5. a skeptical shop owner calling to catch it bluffing or overpromising (12);
+6. an AI engineer probing the AI itself: its model, its prompt, other callers' data, tool
+   failures (12).
+
+From rounds 4 to 6, the cases that failed moved into the main suite with their fix, so a
+regression shows up on the next full run. Round 6 passed 8 of 12 on its first run. Of the 4 fails,
+two went away with the reply-cap fix below, one was only the strict two-questions check, and one
+(a tester should be offered a message) went from 1 of 3 to 3 of 3 that night.
+
+**A tradesman friend broke it on a Sunday night.** He called to break it, and did. He got Godfrey to
+call him "Daddy Cheese", and to read his callback number back wrong twice (the request that reached
+the shop still had the right number). That night both calls became test cases and the fix was
+written: a prompt rule (read back the last number said, no joke nicknames) and a webhook change that
+spells out the number it actually sent, so the read-back comes from code, not the model
+([`sentWithNumber` in `src/alert.ts`](src/alert.ts)). In the simulator his call went from 1 of 6
+runs passing to 6 of 6. The prompt half is live. The webhook half waits on the v16 deploy, and a
+replay of his call against today's prompt on October 28 still got the read-back wrong. So the fix is
+written and simulated, not yet proven on a real call.
+
+**An overnight benchmark found a bug three prompt rewrites couldn't.** Bookings kept losing the job
+description: in one night's runs, 58 of 188 booking calls (some of them retries) left it out. We
+tried three rewordings of the prompt and the booking tool's description; none helped, and all were
+reverted. The overnight run traced it to a 250-token cap on each reply. "Let me book that for you"
+plus a booking for a caller with several jobs runs about 300 tokens, so the API returned the tool
+call cut short, missing its last field. Raising the cap to 500, plus a webhook guard that refuses a
+booking with no description, put the description in 22 of 22 simulated bookings. Both are committed
+and tested, not yet live.
 
 ## Decisions worth explaining
 
@@ -72,8 +119,9 @@ platform's 20-second tool window. See [`src/alert.ts`](src/alert.ts).
   to fix that itself, the model guessed, and once sent 40th for 41st. Now the caller's exact words
   go to [`src/address.ts`](src/address.ts), and the model reads back exactly the words it returns.
 - **Phone numbers.** The webhook, not the model, spells the number back ("four one five, five five
-  five, zero one nine nine"), so the read-back is exactly what the plumber got. A number with fewer
-  than 10 digits gets asked for again, and an address's digits are never taken as a phone number.
+  five, zero one nine nine"), so the read-back is exactly what the plumber got. Since the red-team
+  call above, callback requests and messages do the same (v16). A number with fewer than 10 digits
+  gets asked for again, and an address's digits are never taken as a phone number.
 - **"Are you open?"** On every call the voice platform renders one finished phrase from the shop's
   hours ("closed right now; the next opening is Monday at 7am"). Given the raw hours, the model
   told a Saturday-night caller "we're open until 7 PM tonight".
@@ -102,32 +150,42 @@ so an error there is a status code and a short reason, never the failing row, an
 body or a URL (a webhook URL is a secret). Every tool argument is cut to a length a real call never
 needs. See [`src/safety.ts`](src/safety.ts).
 
-## What we got wrong this week
+## What we got wrong
 
-All three were found in testing, not by a caller, and each fix was tested on the calls that exposed
-it plus a regression run before it went live.
+Found in testing, not by a customer. Each fix is tested on the calls that exposed it, plus a
+regression run, before it goes live.
 
-- **"Okay, bye" booked an appointment.** Godfrey offered times, the caller said "Okay, bye",
-  and the booking went through for a time nobody picked. Now a booking needs a time the caller
-  said out loud. No pick, no booking.
-- **A time was "held" when nothing holds it.** Godfrey told callers a slot was held or reserved
-  for them. Nothing is held until it's booked, so he no longer says it.
-- **A carbon monoxide alarm got the plumbing script.** A caller with a CO alarm going off was
-  treated like a routine call. CO is now handled like a gas smell: everyone out, pets too, call 911
-  from outside, no medical advice. That red-team call went from failing to 4 of 4.
+**Most recent**
+- **A callback number read back wrong.** The friend's call above: the model was reading the digits
+  itself. The code fix is written and simulated; until it deploys, this is the failure we watch for.
+- **Three prompt rewrites for a bug that wasn't in the prompt.** Bookings lost the job description
+  because the reply cap cut the tool call short (above). We should have checked the raw API output
+  before rewording anything.
+- **A fix for talk-overs made every reply slower.** On October 23 we made Godfrey wait 0.6 s instead
+  of 0.2 s after a caller's full stop, so he'd stop cutting people off. That added about 0.4 s to
+  every ordinary turn (1.26 s to 1.65 s median). A narrower rule is written, not live.
 
-Still open, from the turn-taking red-team run: Godfrey sometimes asks again for a name or number
-the caller already gave, repeats a question at greater length when the caller says "you cut out",
-re-asks after a "hold on", and once read the caller-ID digits out loud. Fixes are in testing.
+**Before that**
+- **"Okay, bye" booked an appointment.** Godfrey offered times, the caller said "Okay, bye", and the
+  booking went through for a time nobody picked. Now a booking needs a time the caller said out
+  loud.
+- **A time was "held" when nothing holds it.** Nothing is held until it's booked, so he no longer
+  says it.
+- **A carbon monoxide alarm got the plumbing script.** CO is now handled like a gas smell: everyone
+  out, pets too, call 911 from outside, no medical advice. That red-team call went from failing to
+  4 of 4.
+
+Still open from round 3: Godfrey sometimes asks again for a name or number the caller already
+gave, repeats a question at greater length after "you cut out", and re-asks after a "hold on".
 
 ## What's in this repo
 
 | File | What it does |
 |---|---|
 | [`src/address.ts`](src/address.ts) | Turns a caller's spoken address into a written one and a read-back ("1847 41st Avenue", "eighteen forty-seven, forty-first Avenue") |
-| [`src/alert.ts`](src/alert.ts) | Sends alerts to every channel, counts real deliveries, and writes what the model hears back |
+| [`src/alert.ts`](src/alert.ts) | Sends alerts to every channel, counts real deliveries, writes what the model hears back, and spells out the number it sent |
 | [`src/safety.ts`](src/safety.ts) | Bounds every tool argument and keeps caller data, upstream error bodies and URLs out of logs |
-| [`tests/`](tests) | 27 tests: speech-to-text splits, ordinals, failed and timed-out sends, partial numbers, log hygiene |
+| [`tests/`](tests) | 28 tests: speech-to-text splits, ordinals, failed and timed-out sends, partial numbers, number read-backs, log hygiene |
 | [`docs/sample-calls.md`](docs/sample-calls.md) | Three calls from the test suite: a burst pipe, a child home alone, a failed alert |
 
 ```bash
@@ -135,7 +193,7 @@ npm test     # Node 23.6 or newer, no dependencies
 ```
 
 All three modules run under plain Node with no Deno calls, so the same code the edge function
-deploys is what the tests check. The copies here match webhook v16 (October 25, 2026), which is
+deploys is what the tests check. The copies here match webhook v16 as of October 28, 2026, which is
 committed and tested but not yet deployed to the live line; v15 is what answers the demo number
 today.
 
@@ -160,8 +218,8 @@ setup, simulator and tests, and TypeScript with Node's test runner for the webho
 
 ## Status
 
-Live on a demo line since October 2026, and talking to San Francisco plumbing shops about pilots.
-No paying customers yet.
+The demo line has been live since October 19, 2026. No shop has agreed to a pilot yet, and there
+are no paying customers; I'm cold-calling San Francisco plumbing shops this week.
 Built by Lucas Masen.
 
 ## License
