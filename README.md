@@ -60,6 +60,7 @@ includes. Every score in this section is simulated.
 - **92%** (141 of 153, October 25): 51 call types, 3 runs each.
 - **83%** (96 of 115, October 28): 66 call types, including 15 adversarial ones from red-team rounds
   4 and 5, written to find failures. Those passed 21 of 31; the 51 shared call types passed 89%.
+  The suite has since grown to 70 call types (4 more from red-team round 6).
 - Every run is logged, so the trend is checkable: full runs averaged 71% on October 22, 75% on
   October 23 and 83% on October 24 (11 runs, 1,407 calls). In the 92% run, 8 of the 12 fails
   were only the strict "two questions in one turn" check.
