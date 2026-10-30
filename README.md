@@ -4,7 +4,7 @@ An AI phone receptionist for plumbers. It answers when the shop can't, alerts th
 a burst pipe, walks the homeowner to the shutoff valve, and books routine jobs or takes a message.
 
 A plumber who misses a call while under a sink usually loses that job, because the caller dials
-the next result within minutes. Leek picks up on the first ring, any hour.
+the next result within minutes. Leek picks up any hour.
 
 **Try it:** the demo line is live. Call **(628) 201-0355**, any hour, and say your pipe just burst.
 Godfrey answers as Sunset Plumbing, a made-up shop. The alert goes to my phone, never to a real
@@ -48,12 +48,13 @@ asked, not customers. Read from the voice platform's own call records:
 - **Replies start a median 1.4 seconds after the caller stops talking**, over 100 timed turns (p90
   2.5 s, worst 4.1 s). The model and the voice take about 0.4 s each; the rest is our own rules for
   deciding the caller is done, and tool calls.
-- **About $0.09 a minute** all in (voice platform, voice, speech-to-text and model), plus the phone
-  number.
+- **About $0.09 a minute** on the voice platform's bill (voice platform, voice, speech-to-text and
+  model), about $0.10 a minute with a phone number.
 - 0 tool errors and 0 platform errors.
 
 Ten calls is a small sample, so these are medians, not percentages.
 
+<!-- PENDING LUCAS: 83-88% vs 83-92%. Same pick as site/index.html and site/index-es.html; change all three together. -->
 **In the simulator: 83-92% on full runs**, depending on how many adversarial cases the run
 includes. Every score in this section is simulated.
 - **92%** (141 of 153, October 25): 51 call types, 3 runs each.
