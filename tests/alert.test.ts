@@ -139,3 +139,23 @@ test("callback request and message replies spell the number that was sent (red-t
   assert.equal(sentWithNumber(PERSON_REQUEST_SENT, null), PERSON_REQUEST_SENT);
   assert.equal(sentWithNumber(MESSAGE_SENT, "none"), MESSAGE_SENT);
 });
+
+// The five-line call summary, with the caller's words in quotes and
+// " · " before the access details, reaches both channels exactly as the webhook built it.
+test("the five-line call summary passes through to ntfy and Discord unchanged", async () => {
+  const body = [
+    "EMERGENCY: Dana",
+    "Call back: 4155550166",
+    "Where: 1847 41st Avenue (said \"18 47 40 first\") · back door, gate code 2468",
+    "Problem: Burst pipe under toilet; valve off, water stopped",
+    "Promised: NOT SENT: alert failed; plumber calls back within 15 min; keep valve off",
+  ].join("\n");
+  const sent: Record<string, string> = {};
+  const delivered = await push(BOTH, "Call summary - Demo Plumbing", body, "high", "telephone_receiver", async (url, init) => {
+    sent[String(url).includes("ntfy") ? "ntfy" : "discord"] = String(init?.body);
+    return res(200);
+  });
+  assert.equal(delivered, 2);
+  assert.equal(sent.ntfy, body);
+  assert.equal(JSON.parse(sent.discord).content, `**\u{1F4DE} Call summary - Demo Plumbing**\n${body}`);
+});

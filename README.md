@@ -10,7 +10,7 @@ the next result within minutes. Leek picks up on the first ring, any hour.
 Godfrey answers as Sunset Plumbing, a made-up shop. The alert goes to my phone, never to a real
 plumber.
 
-> This repo is a showcase: this README, three production modules with their tests, and sample calls
+> This repo is a showcase: this README, four production modules with their tests, and sample calls
 > ([docs/sample-calls.md](docs/sample-calls.md)). The full system (the prompt, the call simulator,
 > the test suite and the demo pipeline) is private.
 
@@ -188,16 +188,17 @@ gave, repeats a question at greater length after "you cut out", and re-asks afte
 | [`src/address.ts`](src/address.ts) | Turns a caller's spoken address into a written one and a read-back ("1847 41st Avenue", "eighteen forty-seven, forty-first Avenue") |
 | [`src/alert.ts`](src/alert.ts) | Sends alerts to every channel, counts real deliveries, writes what the model hears back, and spells out the number it sent |
 | [`src/safety.ts`](src/safety.ts) | Bounds every tool argument and keeps caller data, upstream error bodies and URLs out of logs |
-| [`tests/`](tests) | 28 tests: speech-to-text splits, ordinals, failed and timed-out sends, partial numbers, number read-backs, log hygiene |
+| [`src/cap.ts`](src/cap.ts) | Caps how many pushes one call can send, so a prank caller can't flood the alert channel; the first alert of a call and of each emergency kind always goes |
+| [`tests/`](tests) | 41 tests: speech-to-text splits, ordinals, failed and timed-out sends, partial numbers, number read-backs, the alert cap, log hygiene |
 | [`docs/sample-calls.md`](docs/sample-calls.md) | Three calls from the test suite: a burst pipe, a child home alone, a failed alert |
 
 ```bash
 npm test     # Node 23.6 or newer, no dependencies
 ```
 
-All three modules run under plain Node with no Deno calls, so the code the edge function deploys is
-what the tests check. Note: the published `src/` is a pre-v16 snapshot, not the code now on the live
-line (webhook v16, deployed October 29, 2026); `src/alert.ts` in particular differs.
+All four modules run under plain Node with no Deno calls, so the code the edge function deploys is
+what the tests check. On this branch, `src/` matches webhook v16, the code on the live line (deployed
+October 29, 2026). Only the example addresses and names in comments and tests are changed.
 
 ## Testing a phone agent without a phone
 
