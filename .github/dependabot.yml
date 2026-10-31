@@ -1,0 +1,7 @@
+# No npm dependencies here, so only the workflow building blocks are watched.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

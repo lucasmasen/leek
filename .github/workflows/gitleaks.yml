@@ -1,0 +1,25 @@
+# Scans every push (and the full history) for leaked keys: Anthropic, Stripe,
+# Supabase, private keys and ~150 other kinds. A hit fails the check and names
+# the file and line. Free for personal accounts; the code never leaves GitHub.
+name: gitleaks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
