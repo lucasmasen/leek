@@ -32,12 +32,12 @@ sequenceDiagram
     C->>V: callback number and address
     V->>W: check_address, then an update to the alert
     W-->>V: the exact words to read back
-    V->>C: "A plumber will call you back", only after a delivered alert
+    V->>C: "A plumber will call you back", only once code confirms the alert went through
 ```
 
 The voice agent runs on Vapi with Claude Haiku (thinking off, short turns). The webhook is a
-Supabase Edge Function in TypeScript: it sends alerts, checks addresses, books into the shop's
-calendar, logs every call to Postgres, and routes each shop's alerts to that shop's own phone.
+Supabase Edge Function in TypeScript: it sends alerts, checks addresses, books routine jobs into the
+demo shop's calendar (per-shop calendars aren't built), logs every call to Postgres, and routes each shop's alerts to that shop's own phone.
 
 ## Results
 
@@ -54,15 +54,13 @@ asked, not customers. Read from the voice platform's own call records:
 
 Ten calls is a small sample, so these are medians, not percentages.
 
-**In the simulator: 83-92% on full runs**, depending on how many adversarial cases the run
-includes. Every score in this section is simulated.
-- **92%** (141 of 153, October 25): 51 call types, 3 runs each.
+**In the simulator: 83-88% on full ~150-call runs**, depending on how many adversarial cases the
+run includes. Every score in this section is simulated.
 - **83%** (96 of 115, October 28): 66 call types, including 15 adversarial ones from red-team rounds
   4 and 5, written to find failures. Those passed 21 of 31; the 51 shared call types passed 89%.
   The suite has since grown to 70 call types (4 more from red-team round 6).
 - Every run is logged, so the trend is checkable: full runs averaged 71% on October 22, 75% on
-  October 23 and 83% on October 24 (11 runs, 1,407 calls). In the 92% run, 8 of the 12 fails
-  were only the strict "two questions in one turn" check.
+  October 23 and 83% on October 24 (11 runs, 1,407 calls).
 - **Hard callers are in the suite:** a 9-year-old home alone, a Spanish-only caller, an
   82-year-old who's hard of hearing, an angry caller, "ignore your instructions", "are you a
   robot?", a caller whose number is blocked.
@@ -91,8 +89,8 @@ two went away with the reply-cap fix below, one was only the strict two-question
 the callback number back wrong twice (the request that reached the shop still had the right
 number). That night both calls became test cases and the fix was written: a prompt rule (read back
 the last number said) and a webhook change that spells out the number it actually sent, so the read-back comes from code, not
-the model ([`sentWithNumber` in `src/alert.ts`](src/alert.ts)). In the simulator that call went from
-1 of 6 runs passing to 6 of 6. The prompt half is live, and the webhook half (v16) deployed
+the model ([`sentWithNumber` in `src/alert.ts`](src/alert.ts)). In a simulator re-run on October 29,
+the read-back passed 8 of 10 runs. The prompt half is live, and the webhook half (v16) deployed
 October 29. A replay of the call on October 28, before that deploy, still got the read-back wrong.
 So the fix is deployed and simulated, with live test-call verdicts still pending, not yet proven
 on a real call.
