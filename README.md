@@ -54,7 +54,6 @@ asked, not customers. Read from the voice platform's own call records:
 
 Ten calls is a small sample, so these are medians, not percentages.
 
-<!-- PENDING LUCAS: 83-88% vs 83-92%. Same pick as site/index.html and site/index-es.html; change all three together. -->
 **In the simulator: 83-92% on full runs**, depending on how many adversarial cases the run
 includes. Every score in this section is simulated.
 - **92%** (141 of 153, October 25): 51 call types, 3 runs each.
@@ -199,7 +198,7 @@ npm test     # Node 23.6 or newer, no dependencies
 ```
 
 All four modules run under plain Node with no Deno calls, so the code the edge function deploys is
-what the tests check. On this branch, `src/` matches webhook v16, the code on the live line (deployed
+what the tests check. `src/` matches webhook v16, the code on the live line (deployed
 October 29, 2026). Only the example addresses and names in comments and tests are changed.
 
 ## Testing a phone agent without a phone
